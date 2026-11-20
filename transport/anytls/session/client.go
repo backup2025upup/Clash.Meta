@@ -150,6 +150,21 @@ func (c *Client) createSession(ctx context.Context) (*Session, error) {
 	return session, nil
 }
 
+// ResetNetwork closes every session but keeps the client open; each session
+// leaves the idle pool as it closes.
+func (c *Client) ResetNetwork() {
+	c.sessionsLock.Lock()
+	sessions := make([]*Session, 0, len(c.sessions))
+	for _, session := range c.sessions {
+		sessions = append(sessions, session)
+	}
+	c.sessionsLock.Unlock()
+
+	for _, session := range sessions {
+		session.Close()
+	}
+}
+
 func (c *Client) Close() error {
 	c.dieCancel()
 

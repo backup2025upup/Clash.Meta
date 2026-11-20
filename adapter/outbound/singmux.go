@@ -83,6 +83,15 @@ func (s *SingMux) ProxyInfo() C.ProxyInfo {
 	return info
 }
 
+// ResetNetwork closes the mux sessions, which stay on the network they were
+// opened on; the client opens new ones on the next dial.
+func (s *SingMux) ResetNetwork() {
+	if s.client != nil {
+		s.client.Reset()
+	}
+	resetNetwork(s.ProxyAdapter)
+}
+
 // Close implements C.ProxyAdapter
 func (s *SingMux) Close() error {
 	if s.client != nil {

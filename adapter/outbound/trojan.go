@@ -270,6 +270,14 @@ func (t *Trojan) ProxyInfo() C.ProxyInfo {
 }
 
 // Close implements C.ProxyAdapter
+// ResetNetwork drops the pooled HTTP/2 connections, which stay on the network
+// they were opened on; the client stays usable and dials new ones.
+func (t *Trojan) ResetNetwork() {
+	if t.gunClient != nil {
+		_ = t.gunClient.Close()
+	}
+}
+
 func (t *Trojan) Close() error {
 	var errs []error
 	if t.gunClient != nil {

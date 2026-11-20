@@ -87,6 +87,12 @@ func (t *AnyTLS) ProxyInfo() C.ProxyInfo {
 }
 
 // Close implements C.ProxyAdapter
+// ResetNetwork closes the sessions, which stay on the network they were
+// opened on; the client opens new ones on the next dial.
+func (t *AnyTLS) ResetNetwork() {
+	t.client.ResetNetwork()
+}
+
 func (t *AnyTLS) Close() error {
 	return t.client.Close()
 }

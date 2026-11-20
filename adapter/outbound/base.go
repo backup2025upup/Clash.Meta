@@ -407,6 +407,22 @@ func (p *autoCloseProxyAdapter) Close() error {
 	return p.closeErr
 }
 
+// ResetNetwork reaches the wrapped adapter, which the host resets when it
+// changes network.
+func (p *autoCloseProxyAdapter) ResetNetwork() {
+	resetNetwork(p.ProxyAdapter)
+}
+
+type networkResetter interface {
+	ResetNetwork()
+}
+
+func resetNetwork(adapter any) {
+	if resetter, ok := adapter.(networkResetter); ok {
+		resetter.ResetNetwork()
+	}
+}
+
 func NewAutoCloseProxyAdapter(adapter ProxyAdapter) ProxyAdapter {
 	proxy := &autoCloseProxyAdapter{
 		ProxyAdapter: adapter,

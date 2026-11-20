@@ -416,6 +416,14 @@ func (v *Vless) ProxyInfo() C.ProxyInfo {
 }
 
 // Close implements C.ProxyAdapter
+// ResetNetwork drops the pooled HTTP/2 connections, which stay on the network
+// they were opened on; the client stays usable and dials new ones.
+func (v *Vless) ResetNetwork() {
+	if v.gunClient != nil {
+		_ = v.gunClient.Close()
+	}
+}
+
 func (v *Vless) Close() error {
 	var errs []error
 	if v.gunClient != nil {
