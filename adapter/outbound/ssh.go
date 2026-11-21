@@ -121,6 +121,18 @@ func (s *Ssh) ProxyInfo() C.ProxyInfo {
 	return info
 }
 
+// ResetNetwork closes the shared client, which stays on the network it was
+// opened on; the next dial opens a new one.
+func (s *Ssh) ResetNetwork() {
+	s.cMutex.Lock()
+	client := s.client
+	s.client = nil
+	s.cMutex.Unlock()
+	if client != nil {
+		_ = client.Close()
+	}
+}
+
 // Close implements C.ProxyAdapter
 func (s *Ssh) Close() error {
 	s.cMutex.Lock()

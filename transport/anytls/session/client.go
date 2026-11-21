@@ -28,6 +28,8 @@ type Client struct {
 
 	sessions     map[uint64]*Session
 	sessionsLock sync.Mutex
+	// networkGeneration counts ResetNetwork calls and changes only under sessionsLock.
+	networkGeneration atomic.Uint64
 
 	padding *atomic.Pointer[padding.PaddingFactory]
 
@@ -101,8 +103,10 @@ func (c *Client) CreateStream(ctx context.Context) (net.Conn, error) {
 				session.Close()
 			default:
 				c.idleSessionLock.Lock()
-				session.idleSince = time.Now()
-				c.idleSession.Insert(math.MaxUint64-session.seq, session)
+				if !session.IsClosed() {
+					session.idleSince = time.Now()
+					c.idleSession.Insert(math.MaxUint64-session.seq, session)
+				}
 				c.idleSessionLock.Unlock()
 			}
 		}
@@ -113,16 +117,20 @@ func (c *Client) CreateStream(ctx context.Context) (net.Conn, error) {
 
 func (c *Client) getIdleSession() (idle *Session) {
 	c.idleSessionLock.Lock()
-	if !c.idleSession.IsEmpty() {
+	for idle == nil && !c.idleSession.IsEmpty() {
 		it := c.idleSession.Iterate()
 		idle = it.Value()
 		c.idleSession.Remove(it.Key())
+		if idle.IsClosed() {
+			idle = nil
+		}
 	}
 	c.idleSessionLock.Unlock()
 	return
 }
 
 func (c *Client) createSession(ctx context.Context) (*Session, error) {
+	generation := c.networkGeneration.Load()
 	underlying, err := c.dialOut(ctx)
 	if err != nil {
 		return nil, err
@@ -143,6 +151,11 @@ func (c *Client) createSession(ctx context.Context) (*Session, error) {
 	}
 
 	c.sessionsLock.Lock()
+	if c.networkGeneration.Load() != generation {
+		c.sessionsLock.Unlock()
+		_ = underlying.Close()
+		return c.createSession(ctx)
+	}
 	c.sessions[session.seq] = session
 	c.sessionsLock.Unlock()
 
@@ -154,6 +167,7 @@ func (c *Client) createSession(ctx context.Context) (*Session, error) {
 // leaves the idle pool as it closes.
 func (c *Client) ResetNetwork() {
 	c.sessionsLock.Lock()
+	c.networkGeneration.Add(1)
 	sessions := make([]*Session, 0, len(c.sessions))
 	for _, session := range c.sessions {
 		sessions = append(sessions, session)

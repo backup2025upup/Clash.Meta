@@ -276,6 +276,17 @@ func (c *Client) DialUDP(dialer utils.PacketDialer) (UDPConn, error) {
 	return pktConn, nil
 }
 
+// ResetNetwork closes the QUIC session but, unlike Close, leaves the client
+// open; the next stream connects again.
+func (c *Client) ResetNetwork() {
+	c.reconnectMutex.Lock()
+	defer c.reconnectMutex.Unlock()
+	if c.quicSession != nil {
+		_ = c.quicSession.CloseWithError(closeErrorCodeGeneric, "")
+		c.quicSession = nil
+	}
+}
+
 func (c *Client) Close() error {
 	c.reconnectMutex.Lock()
 	defer c.reconnectMutex.Unlock()

@@ -263,6 +263,14 @@ func NewHysteria(option HysteriaOption) (*Hysteria, error) {
 	return outbound, nil
 }
 
+// ResetNetwork drops the QUIC session, which stays on the network it was
+// opened on.
+func (h *Hysteria) ResetNetwork() {
+	if h.client != nil {
+		h.client.ResetNetwork()
+	}
+}
+
 // Close implements C.ProxyAdapter
 func (h *Hysteria) Close() error {
 	if h.client != nil {

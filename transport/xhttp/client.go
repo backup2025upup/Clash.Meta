@@ -312,6 +312,12 @@ func (c *Client) Close() error {
 	return errors.Join(errs...)
 }
 
+// ResetNetwork closes the pooled transports and keeps the client usable.
+func (c *Client) ResetNetwork() {
+	_ = c.uploadManager.Close()
+	_ = c.downloadManager.Close()
+}
+
 func (c *Client) Dial(ctx context.Context) (net.Conn, error) {
 	switch c.mode {
 	case "stream-one":

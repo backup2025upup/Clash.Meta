@@ -200,3 +200,33 @@ func TestResetNetworkHysteria2(t *testing.T) {
 		return outbound.NewHysteria2(options)
 	})
 }
+
+func TestResetNetworkVlessXHTTP(t *testing.T) {
+	in, err := inbound.NewVless(&inbound.VlessOption{
+		BaseOption:  inbound.BaseOption{NameStr: "vless_inbound", Listen: "127.0.0.1", Port: "0"},
+		Users:       []inbound.VlessUser{{Username: "test", UUID: userUUID}},
+		Certificate: tlsCertificate,
+		PrivateKey:  tlsPrivateKey,
+		XHTTPConfig: inbound.XHTTPConfig{Path: "/vless-xhttp", Host: "example.com", Mode: "stream-up"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	testResetNetwork(t, in, func(addrPort netip.AddrPort, dialer C.Dialer, tunnel *TestTunnel) (outbound.ProxyAdapter, error) {
+		options := withXHTTPReuse(outbound.VlessOption{
+			Name:              "vless_outbound",
+			Server:            addrPort.Addr().String(),
+			Port:              int(addrPort.Port()),
+			UUID:              userUUID,
+			TLS:               true,
+			Fingerprint:       tlsFingerprint,
+			ServerName:        "example.org",
+			ClientFingerprint: "chrome",
+			Network:           "xhttp",
+			XHTTPOpts:         outbound.XHTTPOptions{Path: "/vless-xhttp", Host: "example.com", Mode: "stream-up"},
+		})
+		options.DialerForAPI = dialer
+		options.TunnelForAPI = tunnel
+		return outbound.NewVless(options)
+	})
+}
